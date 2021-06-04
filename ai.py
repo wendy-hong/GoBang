@@ -32,8 +32,8 @@ class evaluation(object):
             self.record[i] = []
             for j in range(15):
                 self.record[i].append([0, 0, 0, 0])
-        self.count = []  # 每种棋局的个数：count[黑棋/白棋][模式]
-        for i in range(3):
+        self.count = []  # 每种棋局的个数：count[黑棋/白棋/黄棋][模式]
+        for i in range(4):
             data = [0 for i in range(20)]
             self.count.append(data)
         self.reset()
@@ -54,6 +54,7 @@ class evaluation(object):
             count[0][i] = 0
             count[1][i] = 0
             count[2][i] = 0
+            count[3][i] = 0
         return 0
 
         # 四个方向（水平，垂直，左斜，右斜）分析评估棋盘，再根据结果打分
@@ -62,12 +63,22 @@ class evaluation(object):
         score = self.__evaluate(board, turn)
         count = self.count
         if score < -9000:
-            stone = turn == 1 and 2 or 1
+            if turn == 1:
+                stone = 2
+            elif turn == 2:
+                stone = 3
+            elif turn == 3:
+                stone = 1
             for i in range(20):
                 if count[stone][i] > 0:
                     score -= i
         elif score > 9000:
-            stone = turn == 1 and 2 or 1
+            if turn == 1:
+                stone = 2
+            elif turn == 2:
+                stone = 3
+            elif turn == 3:
+                stone = 1
             for i in range(20):
                 if count[turn][i] > 0:
                     score += i
@@ -112,16 +123,27 @@ class evaluation(object):
                             count[stone][ch] += 1
 
                             # 如果有五连则马上返回分数
-        BLACK, WHITE = 1, 2
+        BLACK, WHITE, YELLOW = 1, 2, 3
         if turn == WHITE:  # 当前是白棋
             if count[BLACK][FIVE]:
                 return -9999
             if count[WHITE][FIVE]:
                 return 9999
-        else:  # 当前是黑棋
+            if count[YELLOW][FIVE]:
+                return -9999
+        elif turn == BLACK:  # 当前是黑棋
             if count[WHITE][FIVE]:
                 return -9999
             if count[BLACK][FIVE]:
+                return 9999
+            if count[YELLOW][FIVE]:
+                return -9999
+        else:  # 当前是黄棋
+            if count[WHITE][FIVE]:
+                return -9999
+            if count[BLACK][FIVE]:
+                return -9999
+            if count[YELLOW][FIVE]:
                 return 9999
 
                 # 如果存在两个冲四，则相当于有一个活四
@@ -129,55 +151,83 @@ class evaluation(object):
             count[WHITE][FOUR] += 1
         if count[BLACK][SFOUR] >= 2:
             count[BLACK][FOUR] += 1
+        if count[YELLOW][SFOUR] >= 2:
+            count[YELLOW][FOUR] += 1
 
             # 具体打分
-        wvalue, bvalue, win = 0, 0, 0
+        wvalue, bvalue, yvalue, win = 0, 0, 0, 0
         if turn == WHITE:
             if count[WHITE][FOUR] > 0: return 9990
             if count[WHITE][SFOUR] > 0: return 9980
-            if count[BLACK][FOUR] > 0: return -9970
+            if count[BLACK][FOUR] > 0: return -9965
             if count[BLACK][SFOUR] and count[BLACK][THREE]:
+                return -9955
+            if count[YELLOW][FOUR] > 0: return -9970
+            if count[YELLOW][SFOUR] and count[YELLOW][THREE]:
                 return -9960
-            if count[WHITE][THREE] and count[BLACK][SFOUR] == 0:
+            if count[WHITE][THREE] and count[BLACK][SFOUR] and count[YELLOW][SFOUR] == 0:
                 return 9950
             if count[BLACK][THREE] > 1 and \
-                            count[WHITE][SFOUR] == 0 and \
-                            count[WHITE][THREE] == 0 and \
-                            count[WHITE][STHREE] == 0:
+                    count[WHITE][SFOUR] == 0 and \
+                    count[WHITE][THREE] == 0 and \
+                    count[WHITE][STHREE] == 0:
+                return -9935
+            if count[YELLOW][THREE] > 1 and \
+                    count[WHITE][SFOUR] == 0 and \
+                    count[WHITE][THREE] == 0 and \
+                    count[WHITE][STHREE] == 0:
                 return -9940
             if count[WHITE][THREE] > 1:
                 wvalue += 2000
             elif count[WHITE][THREE]:
                 wvalue += 200
             if count[BLACK][THREE] > 1:
-                bvalue += 500
+                bvalue += 480
             elif count[BLACK][THREE]:
-                bvalue += 100
+                bvalue += 80
+            if count[YELLOW][THREE] > 1:
+                yvalue += 500
+            elif count[YELLOW][THREE]:
+                yvalue += 100
             if count[WHITE][STHREE]:
                 wvalue += count[WHITE][STHREE] * 10
             if count[BLACK][STHREE]:
-                bvalue += count[BLACK][STHREE] * 10
+                bvalue += count[BLACK][STHREE] * 9
+            if count[YELLOW][STHREE]:
+                yvalue += count[YELLOW][STHREE] * 10
             if count[WHITE][TWO]:
                 wvalue += count[WHITE][TWO] * 4
             if count[BLACK][TWO]:
-                bvalue += count[BLACK][TWO] * 4
+                bvalue += count[BLACK][TWO] * 3
+            if count[YELLOW][TWO]:
+                yvalue += count[YELLOW][TWO] * 4
             if count[WHITE][STWO]:
                 wvalue += count[WHITE][STWO]
             if count[BLACK][STWO]:
                 bvalue += count[BLACK][STWO]
-        else:
+            if count[YELLOW][STWO]:
+                yvalue += count[YELLOW][STWO]
+        elif turn == BLACK:
             if count[BLACK][FOUR] > 0: return 9990
             if count[BLACK][SFOUR] > 0: return 9980
             if count[WHITE][FOUR] > 0: return -9970
             if count[WHITE][SFOUR] and count[WHITE][THREE]:
                 return -9960
-            if count[BLACK][THREE] and count[WHITE][SFOUR] == 0:
+            if count[YELLOW][FOUR] > 0: return -9965
+            if count[YELLOW][SFOUR] and count[YELLOW][THREE]:
+                return -9955
+            if count[BLACK][THREE] and count[WHITE][SFOUR] and count[YELLOW][SFOUR] == 0:
                 return 9950
             if count[WHITE][THREE] > 1 and \
-                            count[BLACK][SFOUR] == 0 and \
-                            count[BLACK][THREE] == 0 and \
-                            count[BLACK][STHREE] == 0:
+                    count[BLACK][SFOUR] == 0 and \
+                    count[BLACK][THREE] == 0 and \
+                    count[BLACK][STHREE] == 0:
                 return -9940
+            if count[YELLOW][THREE] > 1 and \
+                    count[BLACK][SFOUR] == 0 and \
+                    count[BLACK][THREE] == 0 and \
+                    count[BLACK][STHREE] == 0:
+                return -9935
             if count[BLACK][THREE] > 1:
                 bvalue += 2000
             elif count[BLACK][THREE]:
@@ -186,36 +236,101 @@ class evaluation(object):
                 wvalue += 500
             elif count[WHITE][THREE]:
                 wvalue += 100
+            if count[YELLOW][THREE] > 1:
+                yvalue += 480
+            elif count[YELLOW][THREE]:
+                yvalue += 80
             if count[BLACK][STHREE]:
                 bvalue += count[BLACK][STHREE] * 10
             if count[WHITE][STHREE]:
                 wvalue += count[WHITE][STHREE] * 10
+            if count[YELLOW][STHREE]:
+                yvalue += count[YELLOW][STHREE] * 9
             if count[BLACK][TWO]:
                 bvalue += count[BLACK][TWO] * 4
             if count[WHITE][TWO]:
                 wvalue += count[WHITE][TWO] * 4
+            if count[YELLOW][TWO]:
+                yvalue += count[WHITE][TWO] * 3
+            if count[BLACK][STWO]:
+                bvalue += count[BLACK][STWO]
+            if count[WHITE][STWO]:
+                wvalue += count[WHITE][STWO]
+            if count[YELLOW][STWO]:
+                yvalue += count[YELLOW][STWO]
+        else:
+            if count[YELLOW][FOUR] > 0: return 9990
+            if count[YELLOW][SFOUR] > 0: return 9980
+            if count[BLACK][FOUR] > 0: return -9970
+            if count[BLACK][SFOUR] and count[BLACK][THREE]:
+                return -9960
+            if count[WHITE][FOUR] > 0: return -9965
+            if count[WHITE][SFOUR] and count[WHITE][THREE]:
+                return -9955
+            if count[YELLOW][THREE] and count[BLACK][SFOUR] and count[WHITE][SFOUR] == 0:
+                return 9950
+            if count[BLACK][THREE] > 1 and \
+                    count[YELLOW][SFOUR] == 0 and \
+                    count[YELLOW][THREE] == 0 and \
+                    count[YELLOW][STHREE] == 0:
+                return -9940
+            if count[WHITE][THREE] > 1 and \
+                    count[YELLOW][SFOUR] == 0 and \
+                    count[YELLOW][THREE] == 0 and \
+                    count[YELLOW][STHREE] == 0:
+                return -9935
+            if count[YELLOW][THREE] > 1:
+                yvalue += 2000
+            elif count[YELLOW][THREE]:
+                yvalue += 200
+            if count[BLACK][THREE] > 1:
+                bvalue += 500
+            elif count[BLACK][THREE]:
+                bvalue += 100
+            if count[WHITE][THREE] > 1:
+                wvalue += 480
+            elif count[WHITE][THREE]:
+                wvalue += 80
+            if count[YELLOW][STHREE]:
+                yvalue += count[YELLOW][STHREE] * 10
+            if count[BLACK][STHREE]:
+                bvalue += count[BLACK][STHREE] * 10
+            if count[WHITE][STHREE]:
+                wvalue += count[WHITE][STHREE] * 9
+            if count[YELLOW][TWO]:
+                yvalue += count[YELLOW][TWO] * 4
+            if count[BLACK][TWO]:
+                bvalue += count[BLACK][TWO] * 4
+            if count[WHITE][TWO]:
+                wvalue += count[WHITE][TWO] * 3
+            if count[YELLOW][STWO]:
+                yvalue += count[YELLOW][STWO]
             if count[BLACK][STWO]:
                 bvalue += count[BLACK][STWO]
             if count[WHITE][STWO]:
                 wvalue += count[WHITE][STWO]
 
                 # 加上位置权值，棋盘最中心点权值是7，往外一格-1，最外圈是0
-        wc, bc = 0, 0
+        wc, bc, yc = 0, 0, 0
         for i in range(15):
             for j in range(15):
                 stone = board[i][j]
                 if stone != 0:
                     if stone == WHITE:
                         wc += self.POS[i][j]
-                    else:
+                    elif stone == BLACK:
                         bc += self.POS[i][j]
+                    else:
+                        yc += self.POS[i][j]
         wvalue += wc
         bvalue += bc
+        yvalue += yc
 
         if turn == WHITE:
-            return wvalue - bvalue
-
-        return bvalue - wvalue
+            return wvalue - bvalue - yvalue
+        elif turn == BLACK:
+            return bvalue - wvalue - yvalue
+        return yvalue - wvalue - bvalue
 
         # 分析横向
 
@@ -303,7 +418,7 @@ class evaluation(object):
                 record[i] = ANALYSED
             return 0
         stone = line[pos]
-        inverse = (0, 2, 1)[stone]
+        # inverse = (0, 3, 2, 1)[stone]  # 区别双方棋子，stone为1，inverse就是2
         num -= 1
         xl = pos
         xr = pos
@@ -316,10 +431,10 @@ class evaluation(object):
         left_range = xl
         right_range = xr
         while left_range > 0:  # 探索左边范围（非对方棋子的格子坐标）
-            if line[left_range - 1] == inverse: break
+            if line[left_range - 1] != stone and line[left_range - 1] != 0: break
             left_range -= 1
         while right_range < num:  # 探索右边范围
-            if line[right_range + 1] == inverse: break
+            if line[right_range + 1] != stone and line[right_range - 1] != 0: break
             right_range += 1
 
             # 如果该直线范围小于 5，则直接返回
@@ -434,7 +549,6 @@ class evaluation(object):
             return record[pos]
         return 0
 
-
         # ----------------------------------------------------------------------
 
 
@@ -489,8 +603,29 @@ class searcher(object):
             self.board[row][col] = turn
 
             # 计算下一回合该谁走
-            nturn = turn == 1 and 2 or 1
+            # nturn = turn == 1 and 2 or 1
 
+            # if turn == 1:
+            #    nturn = 2
+            # elif turn == 2:
+            #    nturn = 3
+            # elif turn == 3:
+            #    nturn = 1
+
+            if depth == 2:
+                if turn == 1:
+                    nturn = 2
+                elif turn == 2:
+                    nturn = 3
+                elif turn == 3:
+                    nturn = 1
+            elif depth == 1:
+                if turn == 1:
+                    nturn = 3
+                elif turn == 2:
+                    nturn = 1
+                elif turn == 3:
+                    nturn = 2
             # 深度优先搜索，返回评分，走的行和走的列
             score = - self.__search(nturn, depth - 1, -beta, -alpha)
 
@@ -514,7 +649,7 @@ class searcher(object):
 
         # 具体搜索：传入当前是该谁走(turn=1/2)，以及搜索深度(depth)
 
-    def search(self, turn, depth=3):
+    def search(self, turn, depth=2):  # 改深度为2
         self.maxdepth = depth
         self.bestmove = None
         score = self.__search(turn, depth, -0x7fffffff, 0x7fffffff)
